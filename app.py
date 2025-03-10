@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for
+from flask import Flask, render_template, request, redirect, url_for, jsonify  # Add jsonify
 import difflib
 import pandas as pd
 import requests
@@ -8,21 +8,16 @@ from sklearn.metrics.pairwise import cosine_similarity
 
 app = Flask(__name__)
 
-# Load the movies dataset
 movies_data = pd.read_csv('movies.csv')
 
-# Ensure 'title' column exists in dataset
 if 'title' not in movies_data.columns:
     raise ValueError("Error: 'title' column missing from movies.csv")
 
-# Select features for recommendations
 selected_features = ['genres', 'keywords', 'tagline', 'cast', 'director']
 
-# Replace NaN values with an empty string
 for feature in selected_features:
     movies_data[feature] = movies_data[feature].fillna('')
 
-# Combine all features into a single string column
 movies_data['combined_features'] = (
     movies_data['genres'] + ' ' +
     movies_data['keywords'] + ' ' +
@@ -31,14 +26,11 @@ movies_data['combined_features'] = (
     movies_data['director']
 )
 
-# Initialize the TF-IDF Vectorizer and compute feature vectors
 vectorizer = TfidfVectorizer()
 feature_vectors = vectorizer.fit_transform(movies_data['combined_features'])
 
-# Compute the cosine similarity matrix
 similarity = cosine_similarity(feature_vectors)
 
-# TMDB API key and base URL (Replace with your actual API key)
 TMDB_API_KEY = 'f10bc406937f3c8db7cd9e58d49b5347'
 TMDB_BASE_URL = 'https://api.themoviedb.org/3'
 
@@ -56,12 +48,21 @@ def fetch_movie_details(movie_title):
         details_response = requests.get(details_url, params=details_params)
         details_data = details_response.json()
 
+        # Extract director
+        director = ''
+        for crew_member in details_data.get('credits', {}).get('crew', []):
+            if crew_member.get('job') == 'Director':
+                director = crew_member.get('name')
+                break
+
         return {
             'poster_url': f"https://image.tmdb.org/t/p/w500{details_data.get('poster_path', '')}" if details_data.get('poster_path') else "https://via.placeholder.com/500x750?text=Poster+Not+Available",
             'title': details_data.get('title', 'N/A'),
             'runtime': details_data.get('runtime', 'N/A'),
             'genres': ', '.join([genre['name'] for genre in details_data.get('genres', [])]),
-            'cast': ', '.join([actor['name'] for actor in details_data.get('credits', {}).get('cast', [])[:5]])
+            'cast': ', '.join([actor['name'] for actor in details_data.get('credits', {}).get('cast', [])[:5]]),
+            'director': director,  # Add director
+            'tagline': details_data.get('tagline', 'N/A')  # Add tagline
         }
 
     return {
@@ -69,11 +70,12 @@ def fetch_movie_details(movie_title):
         'title': 'N/A',
         'runtime': 'N/A',
         'genres': 'N/A',
-        'cast': 'N/A'
+        'cast': 'N/A',
+        'director': 'N/A',  # Add director
+        'tagline': 'N/A'   # Add tagline
     }
 
 def get_recommendations(movie_name):
-    """Finds and returns recommended movies based on similarity scores."""
     list_of_all_titles = movies_data['title'].tolist()
     find_close_match = difflib.get_close_matches(movie_name, list_of_all_titles)
 
@@ -88,7 +90,7 @@ def get_recommendations(movie_name):
     user_movie_details = fetch_movie_details(close_match)
 
     recommended_movies = []
-    for i, movie in enumerate(sorted_similar_movies[1:11]):  # Get Top 10 recommendations
+    for i, movie in enumerate(sorted_similar_movies[1:11]):  
         index = movie[0]
         title_from_index = movies_data.iloc[index]['title']
         recommended_movies.append(fetch_movie_details(title_from_index))
@@ -97,24 +99,29 @@ def get_recommendations(movie_name):
 
 @app.route("/", methods=["GET", "POST"])
 def index():
-    """Handles the main search form and redirects to the recommendation page."""
     if request.method == "POST":
         movie_name = request.form.get("movie_name", "").strip()
         if not movie_name:
             return render_template("index.html", error="Please enter a movie name.")
-        return redirect(url_for("recommend", movie_name=quote_plus(movie_name)))  # Encode movie name safely
+        return redirect(url_for("recommend", movie_name=quote_plus(movie_name)))  
     return render_template("index.html")
 
 @app.route("/recommend/<movie_name>", methods=["GET"])
 def recommend(movie_name):
-    """Fetches and displays recommendations for a given movie."""
-    movie_name = unquote_plus(movie_name)  # Decode movie name
+    movie_name = unquote_plus(movie_name)  
     user_movie_details, recommended_movies = get_recommendations(movie_name)
 
     if user_movie_details is None:
         return render_template("index.html", error="Movie not found! Please try another name.")
 
     return render_template("index.html", user_movie_details=user_movie_details, recommended_movies=recommended_movies)
+
+@app.route("/search_suggestions", methods=["GET"])
+def search_suggestions():
+    query = request.args.get("query", "").strip().lower()
+    list_of_all_titles = movies_data['title'].tolist()
+    matches = difflib.get_close_matches(query, list_of_all_titles, n=4)  # Get top 4 matches
+    return jsonify(matches)
 
 if __name__ == "__main__":
     app.run(debug=True)

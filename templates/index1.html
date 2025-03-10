@@ -30,26 +30,23 @@
             margin-bottom: 20px;
         }
         
-        .search-container {
+        form {
             display: flex;
+            flex-direction: column;
             align-items: center;
-            justify-content: center;
-            gap: 10px;
-            margin-bottom: 20px;
-            position: relative;
-            width: 100%;
-            max-width: 600px;
-            margin-left: auto;
-            margin-right: auto;
         }
         
-        #movie_name {
+        label {
+            margin-bottom: 10px;
+        }
+        
+        input {
             padding: 10px;
+            margin-bottom: 20px;
             border: 1px solid #ccc;
             border-radius: 4px;
             width: 100%;
             max-width: 400px;
-            flex: 1;
         }
         
         button {
@@ -63,29 +60,6 @@
         
         button:hover {
             background-color: #218838;
-        }
-        
-        #suggestions {
-            position: absolute;
-            top: 100%;  /* Position below the search bar */
-            left: 0;
-            background-color: #fff;
-            border: 1px solid #ccc;
-            max-height: 150px;
-            overflow-y: auto;
-            width: 100%;
-            max-width: 400px;
-            z-index: 1000;
-            margin-top: 5px;
-        }
-        
-        #suggestions div {
-            padding: 10px;
-            cursor: pointer;
-        }
-        
-        #suggestions div:hover {
-            background-color: #f0f0f0;
         }
         
         .movie-details-container {
@@ -195,12 +169,10 @@
 
         {% if not user_movie_details %}
         <!-- Show search bar only if no movie is selected -->
-        <form method="POST" action="/">
-            <div class="search-container">
-                <input type="text" id="movie_name" name="movie_name" required autocomplete="off" placeholder="Enter a movie name">
-                <button type="submit">Get Recommendations</button>
-                <div id="suggestions"></div>  <!-- Suggestions dropdown -->
-            </div>
+        <form method="POST" action="{{ url_for('index') }}">
+            <label for="movie_name">Enter your favorite movie name:</label>
+            <input type="text" id="movie_name" name="movie_name" required>
+            <button type="submit">Get Recommendations</button>
         </form>
         {% endif %}
 
@@ -218,8 +190,6 @@
                     <p><strong>Duration:</strong> {{ user_movie_details.runtime }} minutes</p>
                     <p><strong>Genres:</strong> {{ user_movie_details.genres }}</p>
                     <p><strong>Cast:</strong> {{ user_movie_details.cast }}</p>
-                    <p><strong>Director:</strong> {{ user_movie_details.director }}</p>
-                    <p><strong>Tagline:</strong> {{ user_movie_details.tagline }}</p>
                 </div>
             </div>
         {% endif %}
@@ -229,42 +199,17 @@
             <div class="movie-grid">
                 {% for movie in recommended_movies %}
                     <div class="movie-card">
-                        <a href="{{ url_for('recommend', movie_name=movie.title) }}">
-                            <img src="{{ movie.poster_url }}" alt="{{ movie.title }} Poster">
-                            <p>{{ movie.title }}</p>
-                        </a>
+                        <form method="POST" action="{{ url_for('index') }}">
+                            <input type="hidden" name="movie_name" value="{{ movie.title }}">
+                            <button type="submit" style="border: none; background: none; cursor: pointer;">
+                                <img src="{{ movie.poster_url }}" alt="{{ movie.title }} Poster">
+                                <p>{{ movie.title }}</p>
+                            </button>
+                        </form>
                     </div>
                 {% endfor %}
             </div>
         {% endif %}
     </div>
-
-    <script>
-        // JavaScript for real-time search suggestions
-        const movieInput = document.getElementById("movie_name");
-        const suggestionsDiv = document.getElementById("suggestions");
-
-        movieInput.addEventListener("input", async function () {
-            const query = this.value.trim();
-            if (query.length === 0) {
-                suggestionsDiv.innerHTML = "";  // Clear suggestions if input is empty
-                return;
-            }
-
-            // Fetch suggestions from the server
-            const response = await fetch(`/search_suggestions?query=${encodeURIComponent(query)}`);
-            const suggestions = await response.json();
-
-            // Display suggestions
-            suggestionsDiv.innerHTML = suggestions.map(title => `
-                <div onclick="selectSuggestion('${title}')">${title}</div>
-            `).join("");
-        });
-
-        function selectSuggestion(title) {
-            movieInput.value = title;  // Set the selected suggestion as the input value
-            suggestionsDiv.innerHTML = "";  // Clear suggestions
-        }
-    </script>
 </body>
 </html>
