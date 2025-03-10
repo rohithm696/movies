@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Recommendation System</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+        
+        .container {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            width: 90%;
+            max-width: 1200px;
+            text-align: center;
+        }
+        
+        h1 {
+            margin-bottom: 20px;
+        }
+        
+        form {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        label {
+            margin-bottom: 10px;
+        }
+        
+        input {
+            padding: 10px;
+            margin-bottom: 20px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            width: 100%;
+            max-width: 400px;
+        }
+        
+        button {
+            padding: 10px 20px;
+            background-color: #28a745;
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        
+        button:hover {
+            background-color: #218838;
+        }
+        
+        .movie-details-container {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            text-align: left;
+            margin-top: 20px;
+        }
+        
+        .poster-section {
+            flex-shrink: 0;
+        }
+        
+        .poster-section img {
+            width: 300px;
+            height: auto;
+            border-radius: 30px;
+        }
+        
+        .info-section {
+            flex: 1;
+        }
+        
+        .info-section h2 {
+            margin-top: 0;
+        }
+        
+        .movie-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+        
+        .movie-card {
+            background-color: #f8f9fa;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            overflow: hidden;
+            text-align: center;
+            cursor: pointer;
+            transition: transform 0.2s ease-in-out;
+        }
+        
+        .movie-card:hover {
+            transform: scale(1.05);
+        }
+
+        .movie-card a {
+            text-decoration: none;
+            color: inherit;
+            display: block;
+        }
+        
+        .movie-card img {
+            width: 100%;
+            height: auto;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        .movie-card p {
+            padding: 10px;
+            margin: 0;
+            font-size: 14px;
+            font-weight: bold;
+        }
+
+        @media (max-width: 768px) {
+            .movie-details-container {
+                flex-direction: column;
+                align-items: center;
+            }
+            .poster-section {
+                width: 100%;
+                text-align: center;
+            }
+            .info-section {
+                margin-left: 0;
+                text-align: center;
+            }
+            .movie-grid {
+                grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            }
+        }
+
+        @media (max-width: 480px) {
+            h1 {
+                font-size: 20px;
+            }
+            button {
+                font-size: 14px;
+                padding: 10px 20px;
+            }
+            .movie-grid {
+                grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+            }
+            .movie-card p {
+                font-size: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Movies Recommendation System (Hollywood)</h1>
+
+        {% if not user_movie_details %}
+        <!-- Show search bar only if no movie is selected -->
+        <form method="POST">
+            <label for="movie_name">Enter your favorite movie name:</label>
+            <input type="text" id="movie_name" name="movie_name" required>
+            <button type="submit">Get Recommendations</button>
+        </form>
+        {% endif %}
+
+        {% if error %}
+            <p style="color: red;">{{ error }}</p>
+        {% endif %}
+
+        {% if user_movie_details %}
+            <div class="movie-details-container">
+                <div class="poster-section">
+                    <img src="{{ user_movie_details.poster_url }}" alt="{{ user_movie_details.title }} Poster">
+                </div>
+                <div class="info-section">
+                    <h2>{{ user_movie_details.title }}</h2>
+                    <p><strong>Duration:</strong> {{ user_movie_details.runtime }} minutes</p>
+                    <p><strong>Genres:</strong> {{ user_movie_details.genres }}</p>
+                    <p><strong>Cast:</strong> {{ user_movie_details.cast }}</p>
+                </div>
+            </div>
+        {% endif %}
+
+        {% if recommended_movies %}
+            <h2>Recommended Movies - Click on any movie to get recommendations:</h2>
+            <div class="movie-grid">
+                {% for movie in recommended_movies %}
+                    <div class="movie-card">
+                        <a href="{{ url_for('recommend', movie_name=movie.title) }}">
+                            <img src="{{ movie.poster_url }}" alt="{{ movie.title }} Poster">
+                            <p>{{ movie.title }}</p>
+                        </a>
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    </div>
+</body>
+</html>
